@@ -29,7 +29,9 @@ from pathlib import Path
 
 
 def set_cuda_paths():
-    #print("Set cuda paths...")
+    """
+    Helper function to set cuda paths if you get error from .dll files.
+    """
     venv_base = Path(sys.executable).parent.parent
     nvidia_base_path = venv_base / 'Lib' / 'site-packages' / 'nvidia'
     cuda_path = nvidia_base_path / 'cuda_runtime' / 'bin'
@@ -66,9 +68,6 @@ import threading
 
 
 # Check available models: https://github.com/openai/whisper
-#model_size = "base"
-#model_size = "small"
-#model_size = "medium"
 model_size = "large-v2"
 
 MICROPHONE_INDEX = 1
@@ -79,10 +78,14 @@ wake_word = "pirjo"
 keyword_dict = {"soita": 1, "aika": 2, "lopeta": 3, "mitä kuuluu": 4}
 command_word_dict = {"kyllä": 6, "en": 7}
 
+# Performance timer object
 pf_timer = PerformanceTimer()
 
 
 class VoiceAssistantStateMachine(StateMachine):
+    """
+    Base class for StateMachine variables
+    """
     listening = State("Listening", initial=True)
     waiting_for_command = State("Waiting for command")
     processing_command = State("Processing command")
@@ -102,11 +105,13 @@ class VoiceAssistantStateMachine(StateMachine):
     def on_enter_state(self, event, state):
         """ Reset unrecognized attempts when returning to listening mode """
         print(f"on_enter_state() --> Entering '{state.id}' state from '{event}' event.")
-        #if hasattr(self, 'assistant'):
-            #self.assistant.unrecognized_attempts = 0
 
 
 class VoiceAssistant:
+    """
+    Voice Assistant class to record audio from microphone, transcribe it using faster_whisper Whisper model
+    and mimic voice assistant work flow.
+    """
     def __init__(self):
         self.state_machine = VoiceAssistantStateMachine()
         self.recognizer = sr.Recognizer()
@@ -176,6 +181,9 @@ class VoiceAssistant:
         self.start_timeout()
 
     def listen_audio(self):
+        """
+        Listen microphone and recognize voice.
+        """
         with self.microphone as source:
             self.recognizer.adjust_for_ambient_noise(source)
             while self.running:
@@ -189,6 +197,9 @@ class VoiceAssistant:
                     print(f"listen_audio() --> Error processing audio: {e}")
                 
     def process_audio(self, audio):
+        """
+        Save audio to tempfile and process it using faster_whisper transcribe method.
+        """
         self.cancel_timeout()
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
             temp_audio.write(audio.get_wav_data(convert_rate=sample_rate, convert_width=sample_width))
@@ -204,6 +215,9 @@ class VoiceAssistant:
         self.handle_transcription(cleaned_text)
 
     def handle_transcription(self, text):
+        """
+        Handle Voice Assistant activity based on state and find keywords from transcribed text.
+        """
         self.cancel_timeout()
         if not text:
             return        
@@ -224,6 +238,9 @@ class VoiceAssistant:
             self.handle_command_word(text)
     
     def handle_unrecognized_input(self):
+        """
+        Method for handling not recognized text inputs. 
+        """
         self.unrecognized_attempts += 1
         if self.unrecognized_attempts >= 2:
             self.response("Komentoa ei tunnistettu. Palataan kuuntelutilaan.")
@@ -233,6 +250,9 @@ class VoiceAssistant:
             self.response("Komentoa ei tunnistettu. Voisitko toistaa.")
     
     def handle_contact_name(self, text):
+        """
+        Find contact name based on current set values to self.contacts.
+        """
         for contact in self.contacts:
             if self.find_keyword_with_tolerance(text, contact["name"], threshold=1):
                 self.response(f"Löytyi kontakti nimeltä {contact['name']}. Haluaisitko soittaa?")
@@ -241,6 +261,9 @@ class VoiceAssistant:
         self.handle_unrecognized_input()
     
     def handle_command_word(self, text):
+        """
+        Method for handling command word in state.
+        """
         for word, word_id in self.command_word_dict.items():
             if self.find_keyword_with_tolerance(text, word):
                 self.execute_command(word_id)
@@ -248,11 +271,17 @@ class VoiceAssistant:
         self.handle_unrecognized_input()
 
     def find_keyword_with_tolerance(self, text: str, keyword: str, threshold=1):
+        """
+        Method for finding keyword from text input. Uses levenshtein distance with default threshold=1.
+        """
         words = text.split()
         matches = [word for word in words if lev_dis(word.lower(), keyword.lower()) <= threshold]
         return matches
 
     def execute_command(self, command_id):
+        """
+        Method for executing command based on key-value pairs. Each value represents different command in Voice Assistant.
+        """
         if command_id == 1:
             self.state_machine.request_contact()
             self.contacts = self.search_for_contacts()
@@ -279,6 +308,7 @@ class VoiceAssistant:
 
     def search_for_contacts(self):   
         """
+        Method for searching contact information from database. Return dictionary of search results.
         """ 
         connection = None
         cursor = None        
@@ -310,6 +340,9 @@ class VoiceAssistant:
                 connection.close()  
 
     def run(self):
+        """
+        Main loop to start listening microphone.
+        """
         self.listen_audio()
 
 
