@@ -1,0 +1,18 @@
+digraph VoiceAssistantStateMachine {
+	listening [label=Listening shape=ellipse]
+	waiting_for_command [label="Waiting for command" shape=ellipse]
+	processing_command [label="Processing command" shape=ellipse]
+	asking_contact_name [label="Asking for contact name" shape=ellipse]
+	asking_command_word [label="Asking for command word" shape=ellipse]
+	in_call [label="In a call" shape=ellipse]
+	listening -> waiting_for_command [label="Trigger detected"]
+	waiting_for_command -> processing_command [label="Command received"]
+	processing_command -> asking_contact_name [label="Request contact"]
+	asking_contact_name -> asking_command_word [label="Request command word"]
+	asking_command_word -> in_call [label="Initiate call"]
+	waiting_for_command -> listening [label=Reset]
+	processing_command -> listening [label=Reset]
+	asking_contact_name -> listening [label=Reset]
+	asking_command_word -> listening [label=Reset]
+	in_call -> listening [label=Reset]
+}
